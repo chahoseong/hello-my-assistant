@@ -1,12 +1,16 @@
-## Decision record template by Michael Nygard
+## Decision record template
 
-This is the template in [Documenting architecture decisions - Michael Nygard](http://thinkrelevance.com/blog/2011/11/15/documenting-architecture-decisions).
+Based on [Documenting architecture decisions - Michael Nygard](http://thinkrelevance.com/blog/2011/11/15/documenting-architecture-decisions), and following the style actually used in practice by tools like [adr-tools](https://github.com/npryce/adr-tools/tree/master/doc/adr).
+
+Real ADRs are short — a few lines per section, not essays. Bullet points are fine wherever they make a list easier to scan.
 
 In each ADR file, write these sections:
 
-# Title
+# N. Title
 
-Short noun phrase. e.g. "ADR 9: LDAP for Multitenant Integration"
+`N` is the ADR's plain sequence number (no zero-padding, no "ADR" word — just `# 3. Single command with subcommands`).
+
+Date: YYYY-MM-DD
 
 ## Status
 
@@ -14,12 +18,12 @@ Short noun phrase. e.g. "ADR 9: LDAP for Multitenant Integration"
 
 ## Context
 
-The forces at play — technological, political, social, project-local. These forces are often in tension; call that out. Write this section value-neutral: just the facts, not the response to them.
+The forces at play — technological, political, social, project-local. These forces are often in tension; call that out. Write this section value-neutral: just the facts, not the response to them. A few short sentences or a bullet list of the options considered is enough.
 
 ## Decision
 
-The response to those forces. Full sentences, active voice: "We will …"
+The response to those forces, stated plainly. Doesn't need to be forced into "We will …" boilerplate — a direct declarative statement is fine.
 
 ## Consequences
 
-The resulting context after applying the decision. List all consequences, not just the positive ones — positive, negative, and neutral all belong here, since all of them affect the project going forward.
+The resulting context after applying the decision. List all consequences, not just the positive ones — positive, negative, and neutral all belong here, since all of them affect the project going forward. Short bullets or short paragraphs, not a full write-up.
