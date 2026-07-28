@@ -1,0 +1,45 @@
+[project]
+name = "hello-my-assistant-cli"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+]
+
+[dependency-groups]
+dev = [
+    "mypy==1.18.2",
+    "pytest>=9.1.1",
+    "pytest-httpx>=0.36.2",
+    "ruff>=0.16.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12"]
+build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py314"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "RUF"
+]
+
+[tool.mypy]
+python_version = "3.14"
+files = ["src"]
+strict = true
+plugins = ["pydantic.mypy"]
