@@ -8,13 +8,12 @@ from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 
 import hello_my_assistant_api.main as main_module
-from hello_my_assistant_api.agent import assistant
 
 models.ALLOW_MODEL_REQUESTS = False
 
 
 def test_chat_returns_content_when_request_is_valid(client):
-    with assistant.override(model=TestModel(custom_output_text="테스트")):
+    with main_module.assistant.override(model=TestModel(custom_output_text="테스트")):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": "안녕하세요"}]}
         )
@@ -36,7 +35,7 @@ def test_chat_rejects_request_when_messages_are_empty(client):
 
 
 def test_chat_rejects_request_when_message_role_is_unsupported(client):
-    with assistant.override(model=TestModel()):
+    with main_module.assistant.override(model=TestModel()):
         response = client.post(
             "/chat", json={"messages": [{"role": "unknown", "content": "테스트 요청"}]}
         )
@@ -48,7 +47,7 @@ def test_chat_rejects_request_when_message_role_is_unsupported(client):
     "content", [pytest.param("", id="empty"), pytest.param("   ", id="whitespace-only")]
 )
 def test_chat_rejects_request_when_message_content_is_blank(client, content):
-    with assistant.override(model=TestModel()):
+    with main_module.assistant.override(model=TestModel()):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": content}]}
         )
@@ -57,7 +56,7 @@ def test_chat_rejects_request_when_message_content_is_blank(client, content):
 
 
 def test_chat_rejects_request_when_last_message_is_from_assistant(client):
-    with assistant.override(model=TestModel()):
+    with main_module.assistant.override(model=TestModel()):
         response = client.post(
             "/chat",
             json={
@@ -84,7 +83,7 @@ def test_chat_passes_previous_messages_to_agent(client):
 
         return ModelResponse(parts=[TextPart(content=content)])
 
-    with assistant.override(model=FunctionModel(respond_based_on_history)):
+    with main_module.assistant.override(model=FunctionModel(respond_based_on_history)):
         response = client.post(
             "/chat",
             json={
@@ -110,7 +109,9 @@ def test_chat_passes_trimmed_message_content_to_agent(client):
 
         return ModelResponse(parts=[TextPart(content=content)])
 
-    with assistant.override(model=FunctionModel(respond_based_on_current_prompt)):
+    with main_module.assistant.override(
+        model=FunctionModel(respond_based_on_current_prompt)
+    ):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": " 안녕 "}]}
         )
@@ -123,7 +124,7 @@ def test_chat_returns_502_when_request_fails(client):
     def fail_model_request(messages, _):
         raise ModelAPIError(model_name="test", message="model unavailable")
 
-    with assistant.override(model=FunctionModel(fail_model_request)):
+    with main_module.assistant.override(model=FunctionModel(fail_model_request)):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": "question"}]}
         )
@@ -138,9 +139,9 @@ def test_chat_returns_504_when_agent_run_exceeds_timeout(client, monkeypatch):
 
         return ModelResponse(parts=[TextPart(content="late response")])
 
-    monkeypatch.setattr(main_module, "CHAT_TIMEOUT_SECONDS", 0.001, raising=False)
+    monkeypatch.setattr(main_module.settings, "chat_timeout_seconds", 0.001)
 
-    with assistant.override(model=FunctionModel(respond_after_timeout)):
+    with main_module.assistant.override(model=FunctionModel(respond_after_timeout)):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": "안녕?"}]}
         )
@@ -154,7 +155,9 @@ def test_chat_returns_504_when_agent_run_exceeds_timeout(client, monkeypatch):
     [pytest.param("", id="empty"), pytest.param("   ", id="whitespace-only")],
 )
 def test_chat_returns_502_when_model_returns_blank_content(client, model_content):
-    with assistant.override(model=TestModel(custom_output_text=model_content)):
+    with main_module.assistant.override(
+        model=TestModel(custom_output_text=model_content)
+    ):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": "안녕?"}]}
         )
@@ -167,7 +170,7 @@ def test_chat_returns_500_when_unexpected_error_occurs(client):
     def raise_unexpected_error(messages, _):
         raise RuntimeError("unexpected error")
 
-    with assistant.override(model=FunctionModel(raise_unexpected_error)):
+    with main_module.assistant.override(model=FunctionModel(raise_unexpected_error)):
         response = client.post(
             "/chat", json={"messages": [{"role": "user", "content": "안녕?"}]}
         )

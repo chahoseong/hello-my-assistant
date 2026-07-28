@@ -43,6 +43,7 @@ def test_settings_uses_default_timeout_when_timeout_is_missing(monkeypatch):
     monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
     monkeypatch.setenv("LLM_MODEL_NAME", "test-model")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.delenv("CHAT_TIMEOUT_SECONDS", raising=False)
 
     settings = settings_module.Settings(_env_file=None)
 

@@ -13,7 +13,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy>=2.3.0",
+    "mypy==1.18.2",
     "pytest>=9.1.1",
     "ruff>=0.16.0",
 ]
@@ -42,3 +42,4 @@ select = [
 python_version = "3.14"
 files = ["src"]
 strict = true
+plugins = ["pydantic.mypy"]

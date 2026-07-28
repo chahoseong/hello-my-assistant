@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from fastapi import FastAPI, HTTPException, status
 from pydantic_ai import (
@@ -14,12 +13,13 @@ from pydantic_ai.exceptions import (
     UnexpectedModelBehavior,
 )
 
-from .agent import assistant
+from .agent import create_assistant
 from .schemas import ChatRequest, ChatResponse
-
-CHAT_TIMEOUT_SECONDS = float(os.getenv("CHAT_TIMEOUT_SECONDS", "60"))
+from .settings import Settings
 
 app = FastAPI()
+settings = Settings()
+assistant = create_assistant(settings)
 
 
 @app.get("/")
@@ -44,7 +44,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     prompt = request.messages[-1].content
 
     try:
-        async with asyncio.timeout(CHAT_TIMEOUT_SECONDS):
+        async with asyncio.timeout(settings.chat_timeout_seconds):
             result = await assistant.run(prompt, message_history=message_history)
     except UnexpectedModelBehavior as ex:
         raise HTTPException(
