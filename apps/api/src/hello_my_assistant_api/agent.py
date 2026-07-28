@@ -14,4 +14,3 @@ def create_assistant(settings: Settings) -> Agent[None, str]:
     model = OpenAIChatModel(settings.llm_model_name, provider=provider)
 
     return Agent(model)
-

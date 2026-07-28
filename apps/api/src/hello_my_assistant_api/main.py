@@ -1,13 +1,6 @@
 import asyncio
 
 from fastapi import FastAPI, HTTPException, status
-from pydantic_ai import (
-    ModelMessage,
-    ModelRequest,
-    ModelResponse,
-    TextPart,
-    UserPromptPart,
-)
 from pydantic_ai.exceptions import (
     ModelAPIError,
     UnexpectedModelBehavior,
@@ -29,23 +22,9 @@ async def root() -> dict[str, str]:
 
 @app.post("/chat")
 async def chat(request: ChatRequest) -> ChatResponse:
-    message_history: list[ModelMessage] = []
-
-    for message in request.messages[:-1]:
-        if message.role == "user":
-            message_history.append(
-                ModelRequest(parts=[UserPromptPart(content=message.content)])
-            )
-        else:
-            message_history.append(
-                ModelResponse(parts=[TextPart(content=message.content)])
-            )
-
-    prompt = request.messages[-1].content
-
     try:
         async with asyncio.timeout(settings.chat_timeout_seconds):
-            result = await assistant.run(prompt, message_history=message_history)
+            result = await assistant.run(request.content)
     except UnexpectedModelBehavior as ex:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="Invalid chat response"
