@@ -7,10 +7,13 @@ from fastapi.responses import StreamingResponse
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 
 from .agent import create_assistant
+from .observability import initialize_observability
 from .schemas import ChatRequest
 from .settings import Settings
 
 app = FastAPI()
+initialize_observability(app)
+
 settings = Settings()
 assistant = create_assistant(settings)
 
