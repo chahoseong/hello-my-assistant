@@ -10,6 +10,7 @@ from .agent import create_assistant
 from .chat_stream_tracing import (
     TracedChatStreamingResponse,
     mark_chat_stream_done,
+    mark_chat_stream_error,
     mark_chat_stream_first_delta,
 )
 from .observability import initialize_observability
@@ -57,25 +58,30 @@ async def stream_chat_response(content: str) -> AsyncIterator[str]:
             mark_chat_stream_done()
             yield encode_sse("done", {})
         else:
+            mark_chat_stream_error("invalid_response")
             yield encode_sse(
                 "error",
                 {"code": "invalid_response", "message": "Invalid chat response"},
             )
 
     except UnexpectedModelBehavior:
+        mark_chat_stream_error("invalid_response")
         yield encode_sse(
             "error", {"code": "invalid_response", "message": "Invalid chat response"}
         )
     except ModelAPIError:
+        mark_chat_stream_error("model_error")
         yield encode_sse(
             "error",
             {"code": "model_error", "message": "Failed to generate chat response"},
         )
     except TimeoutError:
+        mark_chat_stream_error("timeout")
         yield encode_sse(
             "error", {"code": "chat_timeout", "message": "Chat response timed out"}
         )
     except Exception:
+        mark_chat_stream_error("internal_error")
         yield encode_sse(
             "error",
             {"code": "internal_error", "message": "Failed to generate chat response"},
