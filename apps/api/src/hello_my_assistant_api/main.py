@@ -7,6 +7,11 @@ from fastapi.responses import StreamingResponse
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 
 from .agent import create_assistant
+from .chat_stream_tracing import (
+    TracedChatStreamingResponse,
+    mark_chat_stream_done,
+    mark_chat_stream_first_delta,
+)
 from .observability import initialize_observability
 from .schemas import ChatRequest
 from .settings import Settings
@@ -25,7 +30,7 @@ async def root() -> dict[str, str]:
 
 @app.post("/chat")
 async def chat(request: ChatRequest) -> StreamingResponse:
-    return StreamingResponse(
+    return TracedChatStreamingResponse(
         stream_chat_response(request.content),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -39,11 +44,17 @@ async def stream_chat_response(content: str) -> AsyncIterator[str]:
         async with asyncio.timeout(settings.chat_timeout_seconds):
             async with assistant.run_stream(content) as result:
                 async for chunk in result.stream_text(delta=True, debounce_by=None):
-                    if chunk:
-                        has_result |= bool(chunk.strip())
-                        yield encode_sse("delta", {"content": chunk})
+                    if not chunk:
+                        continue
+
+                    if chunk.strip():
+                        has_result = True
+                        mark_chat_stream_first_delta()
+
+                    yield encode_sse("delta", {"content": chunk})
 
         if has_result:
+            mark_chat_stream_done()
             yield encode_sse("done", {})
         else:
             yield encode_sse(

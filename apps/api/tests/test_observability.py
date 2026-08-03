@@ -5,12 +5,14 @@ import logfire
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 from logfire.testing import CaptureLogfire
-from pydantic_ai import Agent
+from pydantic_ai import Agent, models
 from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
 import hello_my_assistant_api
 import hello_my_assistant_api.observability as observability
+
+models.ALLOW_MODEL_REQUESTS = False
 
 
 def test_initialize_observability_registers_automatic_instrumentation(monkeypatch):
