@@ -1,3 +1,4 @@
+import asyncio
 from contextvars import ContextVar
 from dataclasses import dataclass
 from time import perf_counter
@@ -7,6 +8,7 @@ import logfire
 from fastapi.responses import StreamingResponse
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+from starlette.requests import ClientDisconnect
 from starlette.types import Receive, Scope, Send
 
 type _ChatStreamOutcome = Literal["done", "error", "incomplete"]
@@ -32,6 +34,10 @@ class _ChatStreamObservation:
     def mark_error(self, error_type: ChatStreamErrorType) -> None:
         self.outcome = "error"
         self.error_type = error_type
+
+    def mark_incomplete(self) -> None:
+        if self.outcome is None:
+            self.outcome = "incomplete"
 
 
 _current_chat_stream_observation: ContextVar[_ChatStreamObservation | None] = (
@@ -59,24 +65,38 @@ def mark_chat_stream_first_delta() -> None:
 
 class TracedChatStreamingResponse(StreamingResponse):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        interruption: ClientDisconnect | asyncio.CancelledError | None = None
+
         with logfire.span("chat.stream") as span:
             observation = _ChatStreamObservation(started_at=perf_counter())
             token = _current_chat_stream_observation.set(observation)
 
             try:
-                await super().__call__(scope, receive, send)
+                try:
+                    await super().__call__(scope, receive, send)
+                except (ClientDisconnect, asyncio.CancelledError) as exec:
+                    observation.mark_incomplete()
+                    interruption = exec
+                except Exception:
+                    observation.mark_error("internal_error")
+                    raise
+                else:
+                    observation.mark_incomplete()
+                finally:
+                    if observation.outcome is not None:
+                        span.set_attribute("chat.outcome", observation.outcome)
 
-                if observation.outcome is not None:
-                    span.set_attribute("chat.outcome", observation.outcome)
+                    if observation.error_type is not None:
+                        span.set_attribute("error.type", observation.error_type)
+                        trace.get_current_span().set_status(Status(StatusCode.ERROR))
 
-                if observation.error_type is not None:
-                    span.set_attribute("error.type", observation.error_type)
-                    trace.get_current_span().set_status(Status(StatusCode.ERROR))
-
-                if observation.time_to_first_delta_ms is not None:
-                    span.set_attribute(
-                        "chat.time_to_first_delta_ms",
-                        observation.time_to_first_delta_ms,
-                    )
+                    if observation.time_to_first_delta_ms is not None:
+                        span.set_attribute(
+                            "chat.time_to_first_delta_ms",
+                            observation.time_to_first_delta_ms,
+                        )
             finally:
                 _current_chat_stream_observation.reset(token)
+
+        if interruption is not None:
+            raise interruption
