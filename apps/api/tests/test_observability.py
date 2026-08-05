@@ -1,6 +1,3 @@
-import importlib
-import sys
-
 import logfire
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
@@ -9,8 +6,10 @@ from pydantic_ai import Agent, models
 from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
-import hello_my_assistant_api
+import hello_my_assistant_api.app as app_module
 import hello_my_assistant_api.observability as observability
+from hello_my_assistant_api.app import create_app
+from hello_my_assistant_api.assistant import Assistant
 
 models.ALLOW_MODEL_REQUESTS = False
 
@@ -59,24 +58,15 @@ def test_initialize_observability_logs_safe_warning_when_configuration_fails(
     assert sensitive_message not in caplog.text
 
 
-def test_api_startup_initializes_observability_once(monkeypatch):
-    module_name = "hello_my_assistant_api.main"
-    original_main_module = sys.modules[module_name]
+def test_create_app_initializes_observability_once(monkeypatch, agent):
     initialized_apps = []
+    assistant = Assistant(agent, timeout_seconds=30)
 
-    with monkeypatch.context() as context:
-        context.setattr(
-            observability, "initialize_observability", initialized_apps.append
-        )
-        context.delitem(sys.modules, module_name)
-        context.delattr(hello_my_assistant_api, "main")
+    monkeypatch.setattr(app_module, "initialize_observability", initialized_apps.append)
 
-        main_module = importlib.import_module(module_name)
+    app = create_app(assistant)
 
-        assert initialized_apps == [main_module.app]
-
-    assert sys.modules[module_name] is original_main_module
-    assert hello_my_assistant_api.main is original_main_module
+    assert initialized_apps == [app]
 
 
 def test_automatic_instrumentation_links_trace_without_ai_content(
