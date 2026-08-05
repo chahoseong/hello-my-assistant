@@ -73,9 +73,13 @@ def test_chat_trace_excludes_prompt_and_response_content_when_chat_is_streamed(
 ):
     _request_successful_chat(client, agent)
 
-    chat_stream_span = _get_chat_stream_span(capfire)
-    serialized_attributes = str(chat_stream_span["attributes"])
+    spans = capfire.exporter.exported_spans_as_dict()
+    sensitive_contents = ("안녕?", "안녕", "하세요")
+    sensitive_content_locations = [
+        f"{span['name']}.attributes.{attribute_name}"
+        for span in spans
+        for attribute_name, attribute_value in span["attributes"].items()
+        if any(content in str(attribute_value) for content in sensitive_contents)
+    ]
 
-    assert "안녕?" not in serialized_attributes
-    assert "안녕" not in serialized_attributes
-    assert "하세요" not in serialized_attributes
+    assert sensitive_content_locations == []

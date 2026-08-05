@@ -24,7 +24,9 @@ def test_initialize_observability_registers_automatic_instrumentation(monkeypatc
     monkeypatch.setattr(
         logfire,
         "instrument_fastapi",
-        lambda instrumented_app: calls.append(("instrument_fastapi", instrumented_app)),
+        lambda instrumented_app, **kwargs: calls.append(
+            ("instrument_fastapi", instrumented_app, kwargs)
+        ),
     )
     monkeypatch.setattr(
         logfire,
@@ -34,11 +36,13 @@ def test_initialize_observability_registers_automatic_instrumentation(monkeypatc
 
     observability.initialize_observability(app)
 
-    assert calls == [
-        ("configure", {"service_name": "hello-my-assistant-api"}),
-        ("instrument_fastapi", app),
-        ("instrument_pydantic_ai", {"include_content": False}),
-    ]
+    assert calls[0] == ("configure", {"service_name": "hello-my-assistant-api"})
+    assert calls[1][0:2] == ("instrument_fastapi", app)
+    assert calls[2] == ("instrument_pydantic_ai", {"include_content": False})
+
+    request_attributes_mapper = calls[1][2]["request_attributes_mapper"]
+
+    assert request_attributes_mapper(None, {"values": {"content": "secret"}}) is None
 
 
 def test_initialize_observability_logs_safe_warning_when_configuration_fails(
