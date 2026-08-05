@@ -29,6 +29,32 @@ def _get_chat_stream_span(capfire: CaptureLogfire):
     return chat_stream_spans[0]
 
 
+async def _run_chat_response_asgi(
+    stream_function,
+    send,
+    *,
+    receive=None,
+    spec_version="2.4",
+):
+    async def receive_http_request():
+        return {"type": "http.request"}
+
+    response_receive = receive or receive_http_request
+
+    with main_module.assistant.override(
+        model=FunctionModel(stream_function=stream_function)
+    ):
+        response = await main_module.chat(main_module.ChatRequest(content="질문"))
+        await response(
+            {
+                "type": "http",
+                "asgi": {"version": "3.0", "spec_version": spec_version},
+            },
+            response_receive,
+            send,
+        )
+
+
 def test_chat_stream_trace_links_http_agent_and_model_spans(
     client, capfire: CaptureLogfire
 ):
@@ -364,25 +390,12 @@ def test_chat_stream_trace_records_interruption_before_first_delta_as_incomplete
     async def respond(messages, _):
         yield "응답"
 
-    async def receive():
-        return {"type": "http.disconnect"}
-
     async def send(message):
         if message["type"] == "http.response.start":
             raise send_exception_type()
 
-    async def interrupt_chat():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
-        with pytest.raises(expected_exception_type):
-            await response(
-                {"type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}},
-                receive,
-                send,
-            )
-
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        asyncio.run(interrupt_chat())
+    with pytest.raises(expected_exception_type):
+        asyncio.run(_run_chat_response_asgi(respond, send))
 
     chat_stream_span = _get_chat_stream_span(capfire)
     chat_stream_attributes = chat_stream_span["attributes"]
@@ -413,28 +426,13 @@ def test_chat_stream_trace_exports_incomplete_span_before_repropagating_cancella
     async def respond(messages, _):
         yield "응답"
 
-    async def receive():
-        return {"type": "http.request"}
-
     async def send(message):
         if message["type"] == "http.response.start":
             raise cancellation
 
     async def cancel_chat():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
         try:
-            await response(
-                {
-                    "type": "http",
-                    "asgi": {
-                        "version": "3.0",
-                        "spec_version": "2.4",
-                    },
-                },
-                receive,
-                send,
-            )
+            await _run_chat_response_asgi(respond, send)
         except asyncio.CancelledError as propagated_cancellation:
             assert propagated_cancellation is cancellation
 
@@ -443,9 +441,8 @@ def test_chat_stream_trace_exports_incomplete_span_before_repropagating_cancella
 
             raise
 
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        with pytest.raises(asyncio.CancelledError) as raised_cancellation:
-            asyncio.run(cancel_chat())
+    with pytest.raises(asyncio.CancelledError) as raised_cancellation:
+        asyncio.run(cancel_chat())
 
     assert raised_cancellation.value is cancellation
 
@@ -462,17 +459,14 @@ def test_chat_stream_trace_records_incomplete_for_http_disconnect_before_first_d
     async def send(message):
         pass
 
-    async def disconnect_chat():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
-        await response(
-            {"type": "http", "asgi": {"version": "3.0", "spec_version": "2.3"}},
-            receive,
+    asyncio.run(
+        _run_chat_response_asgi(
+            respond,
             send,
+            receive=receive,
+            spec_version="2.3",
         )
-
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        asyncio.run(disconnect_chat())
+    )
 
     chat_stream_span = _get_chat_stream_span(capfire)
 
@@ -482,33 +476,27 @@ def test_chat_stream_trace_records_incomplete_for_http_disconnect_before_first_d
 def test_chat_stream_trace_records_internal_error_for_unknown_send_failure(
     capfire: CaptureLogfire,
 ):
+    sensitive_exception_message = "sensitive transport detail"
+
     async def respond(messages, _):
         yield "응답"
 
-    async def receive():
-        return {"type": "http.request"}
-
     async def send(message):
         if message["type"] == "http.response.start":
-            raise RuntimeError("unknown send failure")
+            raise RuntimeError(sensitive_exception_message)
 
-    async def fail_chat_send():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
-        with pytest.raises(RuntimeError, match="unknown send failure"):
-            await response(
-                {"type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}},
-                receive,
-                send,
-            )
-
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        asyncio.run(fail_chat_send())
+    with pytest.raises(RuntimeError, match=sensitive_exception_message):
+        asyncio.run(_run_chat_response_asgi(respond, send))
 
     chat_stream_span = _get_chat_stream_span(capfire)
 
     assert chat_stream_span["attributes"].get("chat.outcome") == "error"
     assert chat_stream_span["attributes"].get("error.type") == "internal_error"
+
+    serialized_chat_stream_span = str(chat_stream_span)
+    assert sensitive_exception_message not in serialized_chat_stream_span
+    assert "exception.message" not in serialized_chat_stream_span
+    assert "exception.stacktrace" not in serialized_chat_stream_span
 
     chat_stream_exported_span = next(
         span
@@ -526,9 +514,6 @@ def test_chat_stream_trace_retains_time_to_first_delta_after_delta_disconnect(
     async def respond(messages, _):
         yield "부분 응답"
 
-    async def receive():
-        return {"type": "http.request"}
-
     async def send(message):
         if (
             message["type"] == "http.response.body"
@@ -536,18 +521,8 @@ def test_chat_stream_trace_retains_time_to_first_delta_after_delta_disconnect(
         ):
             raise OSError("client disconnected")
 
-    async def disconnect_chat():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
-        with pytest.raises(ClientDisconnect):
-            await response(
-                {"type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}},
-                receive,
-                send,
-            )
-
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        asyncio.run(disconnect_chat())
+    with pytest.raises(ClientDisconnect):
+        asyncio.run(_run_chat_response_asgi(respond, send))
 
     chat_stream_span = _get_chat_stream_span(capfire)
 
@@ -567,9 +542,6 @@ def test_chat_stream_trace_preserves_done_after_disconnect_on_done_event(
     async def respond(messages, _):
         yield "완료 응답"
 
-    async def receive():
-        return {"type": "http.request"}
-
     async def send(message):
         if (
             message["type"] == "http.response.body"
@@ -577,18 +549,8 @@ def test_chat_stream_trace_preserves_done_after_disconnect_on_done_event(
         ):
             raise OSError("client disconnected")
 
-    async def disconnect_on_done():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
-        with pytest.raises(ClientDisconnect):
-            await response(
-                {"type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}},
-                receive,
-                send,
-            )
-
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        asyncio.run(disconnect_on_done())
+    with pytest.raises(ClientDisconnect):
+        asyncio.run(_run_chat_response_asgi(respond, send))
 
     chat_stream_span = _get_chat_stream_span(capfire)
 
@@ -602,9 +564,6 @@ def test_chat_stream_trace_preserves_error_after_disconnect_on_error_event(
     async def respond(messages, _):
         yield ""
 
-    async def receive():
-        return {"type": "http.request"}
-
     async def send(message):
         if (
             message["type"] == "http.response.body"
@@ -612,24 +571,8 @@ def test_chat_stream_trace_preserves_error_after_disconnect_on_error_event(
         ):
             raise OSError("client disconnected")
 
-    async def disconnect_on_error():
-        response = await main_module.chat(main_module.ChatRequest(content="질문"))
-
-        with pytest.raises(ClientDisconnect):
-            await response(
-                {
-                    "type": "http",
-                    "asgi": {
-                        "version": "3.0",
-                        "spec_version": "2.4",
-                    },
-                },
-                receive,
-                send,
-            )
-
-    with main_module.assistant.override(model=FunctionModel(stream_function=respond)):
-        asyncio.run(disconnect_on_error())
+    with pytest.raises(ClientDisconnect):
+        asyncio.run(_run_chat_response_asgi(respond, send))
 
     chat_stream_span = _get_chat_stream_span(capfire)
 

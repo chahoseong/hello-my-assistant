@@ -66,6 +66,7 @@ def mark_chat_stream_first_delta() -> None:
 class TracedChatStreamingResponse(StreamingResponse):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         interruption: ClientDisconnect | asyncio.CancelledError | None = None
+        failure: Exception | None = None
 
         with logfire.span("chat.stream") as span:
             observation = _ChatStreamObservation(started_at=perf_counter())
@@ -74,12 +75,12 @@ class TracedChatStreamingResponse(StreamingResponse):
             try:
                 try:
                     await super().__call__(scope, receive, send)
-                except (ClientDisconnect, asyncio.CancelledError) as exec:
+                except (ClientDisconnect, asyncio.CancelledError) as exc:
                     observation.mark_incomplete()
-                    interruption = exec
-                except Exception:
+                    interruption = exc
+                except Exception as exc:
                     observation.mark_error("internal_error")
-                    raise
+                    failure = exc
                 else:
                     observation.mark_incomplete()
                 finally:
@@ -100,3 +101,6 @@ class TracedChatStreamingResponse(StreamingResponse):
 
         if interruption is not None:
             raise interruption
+
+        if failure is not None:
+            raise failure
