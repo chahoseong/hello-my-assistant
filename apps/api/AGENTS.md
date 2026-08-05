@@ -30,7 +30,7 @@ Run all commands from `apps/api/`.
 - `uv run pytest tests/<test_file>.py::<test_name> -q` - Run the single test currently being implemented or fixed.
 - `uv run pytest tests/<test_file>.py -v` - Display every test case, including parametrized cases.
 - `uv run pytest tests/<test_file>.py::<test_name> -vv` - Investigate a failing test with detailed assertion output.
-- `uv run python -m observability_e2e` - Explicitly validate the runtime observability contract against the configured model and Logfire; requires `LOGFIRE_READ_TOKEN` and is not part of the regular test suite.
+- `uv run python -m tests.e2e.observability` - Explicitly validate the runtime observability contract against the configured model and Logfire; requires `LOGFIRE_READ_TOKEN` and is not part of the regular test suite.
 
 ## Boundaries
 

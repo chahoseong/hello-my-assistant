@@ -178,11 +178,11 @@ mapper를 적용하여 endpoint argument 값이 HTTP span에 수집되지 않게
 초기화 실패는 애플리케이션 시작을 막지 않는다.
 
 일반 테스트는 `capfire`의 in-memory exporter로 이 계약을 빠르고 결정적으로
-검증한다. `observability_e2e`는 별도 명령으로 실제 Uvicorn 프로세스, 네트워크,
-Logfire export·ingest·query 경로까지 검증한다. 성공 시나리오는 설정된 실제 모델을
-사용하고, 오류와 연결 중단은 production package 밖의 loopback fault model과
-시나리오 client로 재현한다. production API에는 오류 유도 endpoint를 추가하지
-않는다.
+검증한다. `tests.e2e.observability`는 별도 명령으로 실제 Uvicorn 프로세스,
+네트워크, Logfire export·ingest·query 경로까지 검증한다. 성공 시나리오는 설정된
+실제 모델을 사용하고, 오류와 연결 중단은 production package 밖의 loopback fault
+model과 시나리오 client로 재현한다. production API에는 오류 유도 endpoint를
+추가하지 않는다.
 
 ## Extension Guidelines
 

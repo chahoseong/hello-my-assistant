@@ -27,7 +27,7 @@ from .logfire_trace import (
 
 type _Scenario = Literal["success", "model-error", "disconnect-after-delta"]
 
-_API_ROOT = Path(__file__).resolve().parents[1]
+_API_ROOT = Path(__file__).resolve().parents[3]
 _SENSITIVE_MARKER = "OBSERVABILITY_E2E_PRIVATE_MARKER"
 _ALL_SCENARIOS: tuple[_Scenario, ...] = (
     "success",
@@ -66,7 +66,9 @@ def main() -> None:
     if "disconnect-after-delta" in scenarios:
         fault_scenarios.append("disconnect-after-delta")
     if fault_scenarios:
-        with _running_uvicorn("observability_e2e.fault_model:app") as fault_model_url:
+        with _running_uvicorn(
+            "tests.e2e.observability.fault_model:app"
+        ) as fault_model_url:
             for scenario in fault_scenarios:
                 trace_ids[scenario] = _run_fault_scenario(
                     scenario, fault_model_url=fault_model_url

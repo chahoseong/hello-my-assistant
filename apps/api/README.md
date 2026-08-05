@@ -9,7 +9,7 @@ telemetry to Logfire, and queries the resulting traces from Logfire.
 Set a Logfire read token only in the command environment, then run:
 
 ```shell
-uv run python -m observability_e2e
+uv run python -m tests.e2e.observability
 ```
 
 The default command runs three scenarios and queries their traces together:
@@ -21,7 +21,7 @@ The default command runs three scenarios and queries their traces together:
 Run one scenario by passing its name, for example:
 
 ```shell
-uv run python -m observability_e2e model-error
+uv run python -m tests.e2e.observability model-error
 ```
 
 The runner verifies the HTTP → `chat.stream` → Agent → Model hierarchy,

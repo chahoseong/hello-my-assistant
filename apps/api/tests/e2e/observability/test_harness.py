@@ -1,8 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
-from observability_e2e.__main__ import _verify_model_error_sse
-from observability_e2e.fault_model import create_fault_model_app
-from observability_e2e.logfire_trace import (
+
+from .__main__ import _verify_model_error_sse
+from .fault_model import create_fault_model_app
+from .logfire_trace import (
     TraceVerificationError,
     verify_incomplete_trace,
     verify_model_error_trace,
