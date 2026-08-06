@@ -10,8 +10,6 @@
 
 ## 시스템 아키텍처
 
-이 프로젝트는 현재 탄탄한 백엔드 인프라와 클린 아키텍처 기반(Foundation)을 완성한 상태입니다.
-
 ```mermaid
 graph LR
     %% 스타일 정의
@@ -73,7 +71,7 @@ hello-my-assistant
 
 ## 시작하기
 
-### 1. API 서버 실행 (`apps/api`)
+### 1. API 서버
 
 #### 작업 디렉토리 이동
 
@@ -111,7 +109,7 @@ uv run fastapi dev src/hello_my_assistant_api/main.py
 
 서버가 정상적으로 실행되면 `http://localhost:8000`에서 대기합니다.
 
-### 2. CLI 클라이언트 실행 (`apps/cli`)
+### 2. CLI 클라이언트
 
 #### 작업 디렉토리 이동
 
