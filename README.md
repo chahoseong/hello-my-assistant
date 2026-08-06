@@ -1,8 +1,9 @@
 # Hello My Assistant
 
-AI 에이전트 서비스를 직접 설계하고 구현하며, 신뢰할 수 있는 서비스로 발전시키는 데 필요한 엔지니어링 역량을 단계적으로 쌓아가는 프로젝트입니다.
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Pydantic AI](https://img.shields.io/badge/Pydantic_AI-E92063?style=flat-square&logo=pydantic&logoColor=white)](https://ai.pydantic.dev/)<br>
+[![Logfire](https://img.shields.io/badge/Logfire-6C5CE7?style=flat-square)](https://logfire.pydantic.dev/) [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-000000?style=flat-square&logo=opentelemetry&logoColor=white)](https://opentelemetry.io/) [![uv](https://img.shields.io/badge/uv-DE5FE9?style=flat-square&logo=uv&logoColor=white)](https://docs.astral.sh/uv/)
 
-Python 3.14 · FastAPI · Pydantic AI · Logfire · OpenTelemetry · uv
+AI 에이전트 서비스를 직접 설계하고 구현하며, 신뢰할 수 있는 서비스로 발전시키는 데 필요한 엔지니어링 역량을 단계적으로 쌓아가는 프로젝트입니다.
 
 ## 프로젝트 동기
 
