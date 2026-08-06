@@ -38,7 +38,7 @@ graph LR
     API <-->|2. 컨텍스트 전달 및 청크 반환| Agent
     Agent <-->|3. 프롬프트 및 응답| LLM
   
-    API -.->|4. AssistantEvent (SSE)| Client
+    API -. "4. AssistantEvent (SSE)" .-> Client
 ```
 
 **1. 엄격한 계층 분리 (Strict Layer Separation)**
