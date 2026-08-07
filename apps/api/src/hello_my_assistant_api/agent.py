@@ -2,6 +2,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from .current_datetime import get_current_datetime
 from .settings import Settings
 
 
@@ -13,4 +14,4 @@ def create_agent(settings: Settings) -> Agent[None, str]:
 
     model = OpenAIChatModel(settings.llm_model_name, provider=provider)
 
-    return Agent(model)
+    return Agent(model, tools=[get_current_datetime])
